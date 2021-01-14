@@ -17,14 +17,29 @@ defmodule Etcetera do
   # See https://etcd.io/docs/v2/api/
   #############################################################################
 
+  @doc """
+  Recursively sets key-value pairs when the value is a map.
+
+  Returns `:ok` if successful, `{:error, reason}` if not.
+  """
   def set(key, value) when is_map(value) do
     Enum.each(value, fn {k, v} -> set("#{key}/#{k}", v) end)
   end
 
+  @doc """
+  JSON-encodes a list value before setting the key-value pair.
+
+  Returns `:ok` if successful, `{:error, reason}` if not.
+  """
   def set(key, value) when is_list(value) do
     set(key, Jason.encode!(value))
   end
 
+  @doc """
+  Sets the given key-value pair in the Etcd store.
+
+  Returns `:ok` if successful, `{:error, reason}` if not.
+  """
   def set(key, value) do
     resp = make_put(key, %{"value" => value})
     case resp.status_code do
@@ -53,6 +68,18 @@ defmodule Etcetera do
     end
   end
 
+  @doc """
+  Retrieve the value associated with the given key in the Etcd store.
+
+  If the value is a directory, and `unpack_dir?` is true, the contents of the directory are
+  recursively retrieved and packed into a map which is then returned. If `unpack_dir?` is false,
+  directory values will be treated as error cases.
+
+  All values are JSON-decoded after retrieval, if possible.
+
+  Returns the value (as described above) if it exists, `nil` if the value does not exist or is an
+  empty directory, or `{:error, reason}` if something goes wrong.
+  """
   def get(key, unpack_dir? \\ false) do
     resp = make_get(key)
     case resp.status_code do
@@ -121,6 +148,12 @@ defmodule Etcetera do
     end
   end
 
+  @doc """
+  Checks whether a value exists for the given key in the Etcd store.
+
+  Returns `true` if a value exists for the key, `false` if not, or `{:error, reason}` if
+  something goes wrong.
+  """
   def exists?(key) do
     resp = make_get(key)
     case resp.status_code do
@@ -139,6 +172,15 @@ defmodule Etcetera do
     end
   end
 
+  @doc """
+  Deletes the value for the given key in the Etcd store, if it exists.
+
+  If the value is a directory and `recursive?` is true, the directory will be recursively
+  deleted (the default behaviour). If `recursive?` is false, directory values will be treated as
+  error cases.
+
+  Returns `:ok` if successful, `{:error, reason}` if not.
+  """
   def delete(key, recursive? \\ true) do
     resp = make_delete(key)
     case resp.status_code do
@@ -169,6 +211,11 @@ defmodule Etcetera do
     end
   end
 
+  @doc """
+  Creates a directory with the given name in the Etcd store (similar to Unix `mkdir`).
+
+  Returns `:ok` if successful, `{:error, reason}` if not.
+  """
   def mkdir(dirname) do
     resp = make_put(dirname, %{dir: true})
     case resp.status_code do
@@ -197,6 +244,13 @@ defmodule Etcetera do
     end
   end
 
+  @doc """
+  Removes the given directory from the Etcd store (similar to Unix `rmdir`).
+
+  If the directory is not empty, it will be treated as an error case unless `recursive?` is true.
+
+  Returns `:ok` if successful, `{:error, reason}` if not.
+  """
   def rmdir(dirname, recursive? \\ false) do
     resp = make_delete(dirname, %{dir: true, recursive: recursive?})
     case resp.status_code do
