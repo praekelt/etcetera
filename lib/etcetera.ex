@@ -169,6 +169,34 @@ defmodule Etcetera do
     end
   end
 
+  def mkdir(dirname) do
+    resp = make_put(dirname, %{dir: true})
+    case resp.status_code do
+      201 ->
+        :ok
+      401 ->
+        err_msg = "The request requires authentication (insufficient credentials)"
+        Logger.error(err_msg)
+        {:error, err_msg}
+      403 ->
+        body = Jason.decode!(resp.body)
+        case body["errorCode"] do
+          @err_not_a_file ->
+            err_msg = "Directory '#{dirname}' already exists"
+            Logger.error(err_msg)
+            {:error, err_msg}
+          err_code ->
+            err_msg = "Unhandled error code in mkdir/1: #{err_code}"
+            Logger.error(err_msg)
+            {:error, err_msg}
+        end
+      status_code ->
+        err_msg = "Unhandled status code in mkdir/1: #{status_code}"
+        Logger.error(err_msg)
+        {:error, err_msg}
+    end
+  end
+
   def rmdir(dirname, recursive? \\ false) do
     resp = make_delete(dirname, %{dir: true, recursive: recursive?})
     case resp.status_code do

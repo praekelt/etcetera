@@ -43,7 +43,7 @@ defmodule EtceteraTest do
     test "set and get map value" do
       assert Etcetera.set("foo", %{"bar" => "baz"}) == :ok
       assert Etcetera.exists?("foo")
-      assert Etcetera.get("foo", unpack_dir: true) == %{"bar" => "baz"}
+      assert Etcetera.get("foo", true) == %{"bar" => "baz"}
       assert Etcetera.get("foo/bar") == "baz"
     end
 
@@ -67,10 +67,80 @@ defmodule EtceteraTest do
       }
       assert Etcetera.set("foo", value) == :ok
       assert Etcetera.exists?("foo")
-      assert Etcetera.get("foo", unpack_dir: true) == value
+      assert Etcetera.get("foo", true) == value
     end
 
     test "get non-existent key" do
+      assert Etcetera.get("foo") == nil
+    end
+  end
+
+  describe "test exists? function" do
+    test "set and key exists" do
+      Etcetera.set("foo", "bar")
+      assert Etcetera.exists?("foo")
+    end
+
+    test "set and recursive keys exist" do
+      Etcetera.set("foo", %{"bar" => "baz"})
+      assert Etcetera.exists?("foo")
+      assert Etcetera.exists?("foo/bar")
+    end
+
+    test "non-existent key exists" do
+      assert not Etcetera.exists?("foo")
+    end
+  end
+
+  describe "test delete function" do
+    test "set and delete key" do
+      Etcetera.set("foo", "bar")
+      assert Etcetera.exists?("foo")
+      assert Etcetera.delete("foo") == :ok
+      assert not Etcetera.exists?("foo")
+      assert Etcetera.get("foo") == nil
+    end
+
+    test "set and delete directory recursively" do
+      Etcetera.set("foo", %{"bar" => "baz"})
+      assert Etcetera.exists?("foo")
+      assert Etcetera.delete("foo") == :ok
+      assert not Etcetera.exists?("foo")
+      assert Etcetera.get("foo") == nil
+    end
+
+    test "delete non-existent key" do
+      assert not Etcetera.exists?("foo")
+      assert Etcetera.delete("foo") == {:error, "Key 'foo' does not exist"}
+    end
+  end
+
+  describe "test mkdir and rmdir functions" do
+    test "mkdir and dir exists" do
+      assert Etcetera.mkdir("foo") == :ok
+      assert Etcetera.get("foo") == nil
+      assert Etcetera.exists?("foo")
+    end
+
+    test "mkdir and rmdir empty" do
+      assert Etcetera.mkdir("foo") == :ok
+      assert Etcetera.rmdir("foo") == :ok
+      assert not Etcetera.exists?("foo")
+    end
+
+    test "mkdir and rmdir not empty" do
+      assert Etcetera.mkdir("foo") == :ok
+      assert Etcetera.set("foo/bar", "baz")
+      assert Etcetera.rmdir("foo") == {:error, "Directory 'foo' not empty, try with recursive?: true"}
+      assert Etcetera.exists?("foo")
+      assert Etcetera.get("foo", true) == %{"bar" => "baz"}
+    end
+
+    test "mkdir and rmdir not empty recursive" do
+      assert Etcetera.mkdir("foo") == :ok
+      assert Etcetera.set("foo/bar", "baz")
+      assert Etcetera.rmdir("foo", true) == :ok
+      assert not Etcetera.exists?("foo")
       assert Etcetera.get("foo") == nil
     end
   end
