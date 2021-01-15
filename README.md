@@ -1,6 +1,6 @@
 # etcetera
 
-A simple client for working with an Etcd v2 store in Elixir.
+A simple client for working with an Etcd store in Elixir.
 
 ## Usage
 
@@ -16,9 +16,6 @@ export ETCD_USER=user
 export ETCD_PASS=password
 export ETCD_PREFIX=some/path/here
 ```
-
-Documentation is provided in the form of module and function docs in the code itself.
-
 
 ## Authentication
 
