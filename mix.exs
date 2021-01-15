@@ -31,7 +31,7 @@ defmodule Etcetera.MixProject do
     [
       name: "etcetera",
       files: ~w(config lib test .formatter.exs mix.exs README* CHANGELOG* LICENSE*),
-      license: ["BSD-3-Clause"],
+      licenses: ["BSD-3-Clause"],
       links: %{"GitHub" => "https://github.com/praekelt/etcetera"}
     ]
   end
