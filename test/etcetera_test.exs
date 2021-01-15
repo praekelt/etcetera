@@ -115,7 +115,7 @@ defmodule EtceteraTest do
     end
   end
 
-  describe "test mkdir and rmdir functions" do
+  describe "test ls, mkdir and rmdir functions" do
     test "mkdir and dir exists" do
       assert Etcetera.mkdir("foo") == :ok
       assert Etcetera.get("foo") == nil
@@ -142,6 +142,20 @@ defmodule EtceteraTest do
       assert Etcetera.rmdir("foo", true) == :ok
       assert not Etcetera.exists?("foo")
       assert Etcetera.get("foo") == nil
+    end
+
+    test "mkdir and ls on empty dir" do
+      assert Etcetera.mkdir("foo") == :ok
+      assert Etcetera.ls("foo") == nil
+    end
+
+    test "set map value and ls on dir" do
+      assert Etcetera.set("foo", %{"a" => "b", "c" => "d"})
+      assert Etcetera.ls("foo") == %{"a" => "foo/a", "c" => "foo/c"}
+    end
+
+    test "ls on non-existent dir" do
+      assert Etcetera.ls("foo") == {:error, "Directory 'foo' does not exist"}
     end
   end
 end

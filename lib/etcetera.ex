@@ -212,6 +212,77 @@ defmodule Etcetera do
   end
 
   @doc """
+  Retrieve the top level values associated with the given key (similar to Unix `ls`).
+
+  Values are placed in a map similar to what `get/1` returns, but only one level deep. We first
+  attempt to JSON-decode the values, otherwise they are returned as-is.
+
+  Returns a map of values (as described above) if successful, `nil` if the directory does not
+  exist or is empty, or `{:error, reason}` if something goes wrong.
+  """
+  def ls(dirname) do
+    resp = make_get(dirname)
+    case resp.status_code do
+      200 ->
+        body = Jason.decode!(resp.body)
+        if body["node"]["dir"] do
+          # Value is a directory
+          nodes = body["node"]["nodes"]
+          case nodes do
+            nil ->
+              # Directory is empty
+              nil
+            nodes ->
+              # Directory is not empty, build map
+              Enum.reduce(nodes, %{}, fn node, map ->
+                # Get rid of leading slash in key
+                k = String.trim_leading(node["key"], "/")
+
+                # Remove leading/trailing slashes from prefix
+                prefix = Utils.remove_slashes(etcd_prefix())
+
+                # Get rid of leading prefix or it will be recursively added. Also add it into
+                # the split or keys with the prefix will not be grabbed properly.
+                prefix = "#{prefix}"
+                k = k
+                |> String.split(prefix)
+                |> List.last()
+                |> String.trim_leading("/")
+
+                v = k
+
+                # Get rid of preceding directories in key before putting in map
+                k = k
+                |> String.split("/")
+                |> List.last()
+                Map.put(map, k, v)
+              end)
+          end
+        else
+          # Value is not a directory - attempt to JSON-decode, otherwise return as is
+          case Jason.decode(body["node"]["value"]) do
+            {:ok, result} ->
+              result
+            {:error, _reason} ->
+              body["node"]["value"]
+          end
+        end
+      401 ->
+        err_msg = "The request requires authentication (insufficient credentials)"
+        Logger.error(err_msg)
+        {:error, err_msg}
+      404 ->
+        err_msg = "Directory '#{dirname}' does not exist"
+        Logger.error(err_msg)
+        {:error, err_msg}
+      status_code ->
+        err_msg = "Unhandled status code in ls/1: #{status_code}"
+        Logger.error(err_msg)
+        {:error, err_msg}
+    end
+  end
+
+  @doc """
   Creates a directory with the given name in the Etcd store (similar to Unix `mkdir`).
 
   Returns `:ok` if successful, `{:error, reason}` if not.
@@ -219,6 +290,8 @@ defmodule Etcetera do
   def mkdir(dirname) do
     resp = make_put(dirname, %{dir: true})
     case resp.status_code do
+      200 ->
+        :ok
       201 ->
         :ok
       401 ->
