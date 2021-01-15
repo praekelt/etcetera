@@ -1,6 +1,6 @@
-defmodule Etcetera do
+defmodule Etcetera.EtcdV2 do
   @moduledoc """
-  Functions for interacting with an Etcd store.
+  Functions for interacting with an Etcd v2 store.
   """
 
   require Logger
