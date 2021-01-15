@@ -4,7 +4,7 @@ defmodule Etcetera.MixProject do
   def project do
     [
       app: :etcetera,
-      version: "0.1.0",
+      version: "0.1.1",
       elixir: "~> 1.10",
       start_permanent: Mix.env() == :prod,
       description: description(),
@@ -31,7 +31,7 @@ defmodule Etcetera.MixProject do
     [
       name: "etcetera",
       files: ~w(config lib test .formatter.exs mix.exs README* CHANGELOG* LICENSE*),
-      license: ["BSD-3-Clause"],
+      licenses: ["BSD-3-Clause"],
       links: %{"GitHub" => "https://github.com/praekelt/etcetera"}
     ]
   end
