@@ -3,6 +3,8 @@ defmodule EtceteraTest do
 
   alias Etcetera.EtcdV2
 
+  # TODO: Travis integration
+
   doctest EtcdV2
 
   setup do
