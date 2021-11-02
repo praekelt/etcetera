@@ -19,9 +19,10 @@ defmodule Etcetera.Utils do
     |> String.replace_leading("/", "")
   end
 
-  def get_etcd_url(host, port, prefix, path, version \\ "v2") do
-    host = remove_slashes(host)
-    prefix = remove_slashes(prefix)
+  def get_etcd_url(path, version \\ "v2") do
+    host = remove_slashes(Etcetera.etcd_host)
+    port = Etcetera.etcd_port
+    prefix = remove_slashes(Etcetera.etcd_prefix)
     path = remove_slashes(path)
     "#{host}:#{port}/#{version}/keys/#{prefix}/#{path}"
   end

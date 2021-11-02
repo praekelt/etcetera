@@ -88,7 +88,7 @@ defmodule Etcetera.EtcdV2 do
                   k = String.trim_leading(node["key"], "/")
 
                   # Remove leading and trailing slashes from prefix
-                  prefix = Utils.remove_slashes(etcd_prefix())
+                  prefix = Utils.remove_slashes(Etcetera.etcd_prefix())
 
                   # Get rid of the leading prefix or it will be recursively added. Also add it into
                   # the split or keys with the prefix will not be grabbed properly.
@@ -221,7 +221,7 @@ defmodule Etcetera.EtcdV2 do
                 k = String.trim_leading(node["key"], "/")
 
                 # Remove leading/trailing slashes from prefix
-                prefix = Utils.remove_slashes(etcd_prefix())
+                prefix = Utils.remove_slashes(Etcetera.etcd_prefix())
 
                 # Get rid of leading prefix or it will be recursively added. Also add it into
                 # the split or keys with the prefix will not be grabbed properly.
@@ -343,8 +343,8 @@ defmodule Etcetera.EtcdV2 do
   end
 
   defp make_request(method, path, params) do
-    url = Utils.get_etcd_url(etcd_host(), etcd_port(), etcd_prefix(), path)
-    auth = [basic_auth: {etcd_user(), etcd_pass()}]
+    url = Utils.get_etcd_url(path)
+    auth = [basic_auth: {Etcetera.etcd_user(), Etcetera.etcd_pass()}]
 
     Logger.debug("Making request to #{url} with params #{inspect(params)}")
     case HTTPoison.request(method, url, "", [], [
@@ -363,10 +363,4 @@ defmodule Etcetera.EtcdV2 do
         resp
     end
   end
-
-  defp etcd_host, do: Application.get_env(:etcetera, :etcd_host)
-  defp etcd_port, do: Application.get_env(:etcetera, :etcd_port)
-  defp etcd_user, do: Application.get_env(:etcetera, :etcd_user)
-  defp etcd_pass, do: Application.get_env(:etcetera, :etcd_pass)
-  defp etcd_prefix, do: Application.get_env(:etcetera, :etcd_prefix)
 end
