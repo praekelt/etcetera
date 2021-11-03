@@ -17,54 +17,43 @@ defmodule Etcetera.EtcdV2 do
   # See https://etcd.io/docs/v2/api/
   #############################################################################
 
-  @doc """
-  Recursively sets key-value pairs when the value is a map.
+  def set(key, value) when is_map(value), do: set_map(key, value)
+  def set(key, value) when is_list(value), do: set_list(key, value)
+  def set(key, value), do: set_value(key, value)
 
-  Returns `:ok` if successful, `{:error, reason}` if not.
-  """
-  def set(key, value) when is_map(value) do
+  defp set_map(key, value) do
     Enum.each(value, fn {k, v} -> set("#{key}/#{k}", v) end)
   end
 
-  @doc """
-  JSON-encodes a list value before setting the key-value pair.
-
-  Returns `:ok` if successful, `{:error, reason}` if not.
-  """
-  def set(key, value) when is_list(value) do
+  defp set_list(key, value) do
     set(key, Jason.encode!(value))
   end
 
-  @doc """
-  Sets the given key-value pair in the Etcd store.
-
-  Returns `:ok` if successful, `{:error, reason}` if not.
-  """
-  def set(key, value) do
+  def set_value(key, value) do
     resp = make_put(key, %{"value" => value})
     case resp.status_code do
       200 ->
+        # Existing value reset
         :ok
       201 ->
+        # New value created
         :ok
       401 ->
-        err_msg = "The request requires authentication (insufficient credentials)"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("The request requires authentication (insufficient credentials)")
+        {:error, "Unauthorized user"}
       403 ->
         body = Jason.decode!(resp.body)
-        err_msg = case body["errorCode"] do
+        case body["errorCode"] do
           @err_not_a_file ->
-            "Could not set key #{key}, already exists as directory"
+            Logger.error("Could not create key. Already exists as directory.")
+            {:error, "Could not create key. Already exists as directory."}
           err_code ->
-            "Unhandled error code in set/2: #{err_code}"
+            Logger.error("Unhandled error code in set/2: #{err_code}")
+            {:error, "Unhandled error code #{err_code}"}
         end
-        Logger.error(err_msg)
-        {:error, err_msg}
       status_code ->
-        err_msg = "Unhandled status code in set/2: #{status_code}"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Unhandled status code in set/2: #{status_code}")
+        {:error, "Unhandled status #{status_code}"}
     end
   end
 
@@ -99,7 +88,7 @@ defmodule Etcetera.EtcdV2 do
                   k = String.trim_leading(node["key"], "/")
 
                   # Remove leading and trailing slashes from prefix
-                  prefix = Utils.remove_slashes(etcd_prefix())
+                  prefix = Utils.remove_slashes(Etcetera.etcd_prefix())
 
                   # Get rid of the leading prefix or it will be recursively added. Also add it into
                   # the split or keys with the prefix will not be grabbed properly.
@@ -135,16 +124,14 @@ defmodule Etcetera.EtcdV2 do
           end
         end
       401 ->
-        err_msg = "The request requires authentication (insufficient credentials)"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("The request requires user authentication (Insufficient credentials)")
+        {:error, "Unauthorized user"}
       404 ->
         Logger.debug("Key '#{key}' not found")
         nil
       status_code ->
-        err_msg = "Unhandled status code in get/1: #{status_code}"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Unhandled status in get/1: #{status_code}")
+        {:error, "Unhandled status #{status_code}"}
     end
   end
 
@@ -160,15 +147,13 @@ defmodule Etcetera.EtcdV2 do
       200 ->
         true
       401 ->
-        err_msg = "The request requires authentication (insufficient credentials)"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("The request requires user authentication (Insufficient credentials)")
+        {:error, "Unauthorized user"}
       404 ->
         false
       status_code ->
-        err_msg = "Unhandled status code in exists?/1: #{status_code}"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Unhandled status in exists?/1: #{status_code}")
+        {:error, "Unhandled status #{status_code}"}
     end
   end
 
@@ -187,27 +172,24 @@ defmodule Etcetera.EtcdV2 do
       200 ->
         :ok
       401 ->
-        err_msg = "The request requires authentication (insufficient credentials)"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("The request requires user authentication (Insufficient credentials)")
+        {:error, "Unauthorized user"}
       403 ->
         body = Jason.decode!(resp.body)
         case body["errorCode"] do
           @err_not_a_file ->
             rmdir(key, recursive?)
           err_code ->
-            err_msg = "Unhandled error code in delete/1: #{err_code}"
-            Logger.error(err_msg)
-            {:error, err_msg}
+            Logger.error("Unhandled error code in delete/1: #{err_code}")
+            {:error, "Unhandled error code #{err_code}"}
         end
       404 ->
         err_msg = "Key '#{key}' does not exist"
         Logger.error(err_msg)
         {:error, err_msg}
       status_code ->
-        err_msg = "Unhandled status code in delete/1: #{status_code}"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Unhandled status in delete/1: #{status_code}")
+        {:error, "Unhandled status #{status_code}"}
     end
   end
 
@@ -239,7 +221,7 @@ defmodule Etcetera.EtcdV2 do
                 k = String.trim_leading(node["key"], "/")
 
                 # Remove leading/trailing slashes from prefix
-                prefix = Utils.remove_slashes(etcd_prefix())
+                prefix = Utils.remove_slashes(Etcetera.etcd_prefix())
 
                 # Get rid of leading prefix or it will be recursively added. Also add it into
                 # the split or keys with the prefix will not be grabbed properly.
@@ -268,17 +250,14 @@ defmodule Etcetera.EtcdV2 do
           end
         end
       401 ->
-        err_msg = "The request requires authentication (insufficient credentials)"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("The request requires user authentication (Insufficient credentials)")
+        {:error, "Unauthorized user"}
       404 ->
-        err_msg = "Directory '#{dirname}' does not exist"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Directory '#{dirname}' does not exist")
+        nil
       status_code ->
-        err_msg = "Unhandled status code in ls/1: #{status_code}"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Unhandled status in ls/1: #{status_code}")
+        {:error, "Unhandled status #{status_code}"}
     end
   end
 
@@ -295,25 +274,21 @@ defmodule Etcetera.EtcdV2 do
       201 ->
         :ok
       401 ->
-        err_msg = "The request requires authentication (insufficient credentials)"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("The request requires user authentication (Insufficient credentials)")
+        {:error, "Unauthorized user"}
       403 ->
         body = Jason.decode!(resp.body)
         case body["errorCode"] do
           @err_not_a_file ->
-            err_msg = "Directory '#{dirname}' already exists"
-            Logger.error(err_msg)
-            {:error, err_msg}
+            Logger.error("Could not create directory. Already exists #{dirname}.")
+            {:error, "Could not create directory. Already exists #{dirname}."}
           err_code ->
-            err_msg = "Unhandled error code in mkdir/1: #{err_code}"
-            Logger.error(err_msg)
-            {:error, err_msg}
+            Logger.error("Unhandled error code in mkdir/1: #{err_code}")
+            {:error, "Unhandled error code #{err_code}"}
         end
       status_code ->
-        err_msg = "Unhandled status code in mkdir/1: #{status_code}"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Unhandled status in mkdir/1: #{status_code}")
+        {:error, "Unhandled status #{status_code}"}
     end
   end
 
@@ -330,29 +305,24 @@ defmodule Etcetera.EtcdV2 do
       200 ->
         :ok
       401 ->
-        err_msg = "The request requires authentication (insufficient credentials)"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("The request requires user authentication (Insufficient credentials)")
+        {:error, "Unauthorized user"}
       403 ->
         body = Jason.decode!(resp.body)
         case body["errorCode"] do
           @err_dir_not_empty ->
-            err_msg = "Directory '#{dirname}' not empty, try with recursive?: true"
-            Logger.error(err_msg)
-            {:error, err_msg}
+            Logger.warn("Directory '#{dirname}' not empty, try with recursive: true")
+            {:error, "Directory not empty"}
           err_code ->
-            err_msg = "Unhandled error code in rmdir/1: #{err_code}"
-            Logger.error(err_msg)
-            {:error, err_msg}
+            Logger.error("Unhandled error code in rmdir/1: #{err_code}")
+            {:error, "Unhandled error code #{err_code}"}
         end
       404 ->
-        err_msg = "Directory '#{dirname}' does not exist"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Directory '#{dirname}' does not exist")
+        {:error, "Directory does not exist"}
       status_code ->
-        err_msg = "Unhandled status code in rmdir/1: #{status_code}"
-        Logger.error(err_msg)
-        {:error, err_msg}
+        Logger.error("Unhandled status in rmdir/1: #{status_code}")
+        {:error, "Unhandled status #{status_code}"}
     end
   end
 
@@ -364,7 +334,7 @@ defmodule Etcetera.EtcdV2 do
     make_request(:get, path, params)
   end
 
-  defp make_put(path, params \\ %{}) do
+  defp make_put(path, params) do
     make_request(:put, path, params)
   end
 
@@ -373,8 +343,8 @@ defmodule Etcetera.EtcdV2 do
   end
 
   defp make_request(method, path, params) do
-    url = Utils.get_etcd_url(etcd_host(), etcd_port(), etcd_prefix(), path)
-    auth = [basic_auth: {etcd_user(), etcd_pass()}]
+    url = Utils.get_etcd_url(path)
+    auth = [basic_auth: {Etcetera.etcd_user(), Etcetera.etcd_pass()}]
 
     Logger.debug("Making request to #{url} with params #{inspect(params)}")
     case HTTPoison.request(method, url, "", [], [
@@ -382,7 +352,10 @@ defmodule Etcetera.EtcdV2 do
       hackney: auth,
       follow_redirect: true]
     ) do
-      {:error, reason} ->
+      {:error, %HTTPoison.Error{reason: :timeout}} ->
+        Logger.error("Timeout on Etcd request")
+        {:error, :timeout}
+      {:error, %HTTPoison.Error{reason: reason}} ->
         Logger.error("Unable to make request to Etcd: #{reason}")
         %{status_code: 503}
       {:ok, resp} ->
@@ -390,10 +363,4 @@ defmodule Etcetera.EtcdV2 do
         resp
     end
   end
-
-  defp etcd_host, do: Application.get_env(:etcetera, :etcd_host)
-  defp etcd_port, do: Application.get_env(:etcetera, :etcd_port)
-  defp etcd_user, do: Application.get_env(:etcetera, :etcd_user)
-  defp etcd_pass, do: Application.get_env(:etcetera, :etcd_pass)
-  defp etcd_prefix, do: Application.get_env(:etcetera, :etcd_prefix)
 end
