@@ -22,6 +22,9 @@ defmodule Etcetera.EtcdV2 do
   def set(key, value), do: set_value(key, value)
 
   defp set_map(key, value) do
+    # We have to delete this key first, otherwise if the original value contains keys that the new
+    # value doesn't, those keys won't be overwritten and will remain in the store.
+    delete(key)
     Enum.each(value, fn {k, v} -> set("#{key}/#{k}", v) end)
   end
 
